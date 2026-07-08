@@ -103,6 +103,9 @@ const CARDIO_OPTIONS = {
   ],
 };
 
+// BUG FIX: declare VALID_LEVELS before it is used by getWorkoutPlan
+const VALID_LEVELS = ["beginner", "intermediate", "advanced"];
+
 /**
  * Determine number of workout sets based on time and level
  */
@@ -152,8 +155,6 @@ function getWorkoutPlan({ level, time, equipment, goal, injuries }) {
     tip: getMotivationalTip(lvl, goal),
   };
 }
-
-const VALID_LEVELS = ["beginner", "intermediate", "advanced"];
 
 function getInjuryModifications(injuries) {
   if (!injuries) return [];

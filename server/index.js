@@ -54,15 +54,17 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "Fitness Buddy is live 🏃", timestamp: new Date().toISOString() });
 });
 
-// ── Catch-all → serve frontend ──────────────────────────────────
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../public/index.html"));
-});
-
-// ── Error handler ───────────────────────────────────────────────
+// ── BUG FIX: error handler MUST come before catch-all and before app.listen
+// Express identifies 4-arg middleware as an error handler only when declared
+// before the server starts listening.
 app.use((err, req, res, next) => {
   console.error("[Error]", err.message);
   res.status(err.status || 500).json({ error: err.message || "Something went wrong. Try again!" });
+});
+
+// ── BUG FIX: catch-all only for non-/api/ paths so API 404s are not swallowed
+app.get(/^(?!\/api\/).*$/, (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/index.html"));
 });
 
 app.listen(PORT, () => {

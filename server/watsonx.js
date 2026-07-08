@@ -51,13 +51,16 @@ Keep responses concise, practical, and energetic.`;
  * @returns {Promise<string>}
  */
 async function generateResponse(conversationHistory, userProfile = {}) {
-  const wx = getClient();
   const modelId = process.env.GRANITE_MODEL_ID || "ibm/granite-13b-chat-v2";
   const projectId = process.env.WATSONX_PROJECT_ID;
 
+  // BUG FIX: return fallback immediately instead of throwing — the catch below
+  // would never match "PROJECT_ID" because the error message contains "WATSONX_PROJECT_ID"
   if (!projectId) {
-    throw new Error("WATSONX_PROJECT_ID not configured. Check your .env file.");
+    return getFallbackResponse(conversationHistory);
   }
+
+  const wx = getClient();
 
   // Build profile context if available
   let profileContext = "";
@@ -83,17 +86,17 @@ async function generateResponse(conversationHistory, userProfile = {}) {
   }));
 
   try {
+    // BUG FIX: textChat uses maxTokens not max_new_tokens; temperature/topP are
+    // top-level params not nested under "parameters" for the chat endpoint
     const response = await wx.textChat({
       modelId,
       projectId,
       messages,
       system: fullSystemPrompt,
-      parameters: {
-        max_new_tokens: 600,
-        temperature: 0.75,
-        top_p: 0.9,
-        repetition_penalty: 1.1,
-      },
+      maxTokens: 600,
+      temperature: 0.75,
+      topP: 0.9,
+      repetitionPenalty: 1.1,
     });
 
     const text =
@@ -104,8 +107,19 @@ async function generateResponse(conversationHistory, userProfile = {}) {
     if (!text) throw new Error("Empty response from Granite model.");
     return text.trim();
   } catch (err) {
-    // Provide a helpful fallback if Watsonx isn't configured yet
-    if (err.message.includes("PROJECT_ID") || err.message.includes("API key") || err.message.includes("401")) {
+    // BUG FIX: broaden the catch to cover more auth/config error messages
+    const msg = err.message || "";
+    if (
+      msg.includes("PROJECT_ID") ||
+      msg.includes("API key") ||
+      msg.includes("api_key") ||
+      msg.includes("401") ||
+      msg.includes("403") ||
+      msg.includes("Unauthorized") ||
+      msg.includes("not authenticated") ||
+      msg.includes("serviceUrl") ||
+      (err.status && (err.status === 401 || err.status === 403))
+    ) {
       return getFallbackResponse(conversationHistory);
     }
     throw err;

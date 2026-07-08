@@ -22,6 +22,22 @@ router.post("/", async (req, res) => {
 
   const sid = sessionId || uuidv4();
 
+  // Safety boundary check — before touching history
+  const safety = checkSafety(message.trim());
+  if (!safety.safe) {
+    // Still persist the exchange so history is consistent
+    let conv = db.get("conversations").find({ sessionId: sid }).value();
+    if (!conv) {
+      conv = { sessionId: sid, profileId: profileId || null, messages: [] };
+      db.get("conversations").push(conv).write();
+    }
+    conv.messages.push({ role: "user", content: message.trim() });
+    conv.messages.push({ role: "assistant", content: safety.response });
+    if (conv.messages.length > 40) conv.messages = conv.messages.slice(-40);
+    db.get("conversations").find({ sessionId: sid }).assign({ messages: conv.messages }).write();
+    return res.json({ reply: safety.response, sessionId: sid });
+  }
+
   // Load or create conversation history
   let conv = db.get("conversations").find({ sessionId: sid }).value();
   if (!conv) {
@@ -29,14 +45,13 @@ router.post("/", async (req, res) => {
     db.get("conversations").push(conv).write();
   }
 
+  // BUG FIX: update profileId on the stored conversation if provided for the first time
+  if (profileId && !conv.profileId) {
+    conv.profileId = profileId;
+  }
+
   // Append user message
   conv.messages.push({ role: "user", content: message.trim() });
-
-  // Safety boundary check
-  const safety = checkSafety(message.trim());
-  if (!safety.safe) {
-    return res.json({ reply: safety.response, sessionId: sid });
-  }
 
   // Load profile if linked
   let profile = null;

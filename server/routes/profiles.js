@@ -86,10 +86,16 @@ router.put("/:id", (req, res) => {
   const errors = validateProfile({ ...existing, ...req.body });
   if (errors.length) return res.status(400).json({ errors });
 
+  // BUG FIX: strip server-managed fields so a client cannot overwrite them
+  const { id, createdAt, totalWorkouts, currentStreak, longestStreak, ...allowedUpdates } = req.body;
+
   const updated = {
-    ...req.body,
+    ...allowedUpdates,
     id: existing.id,
     createdAt: existing.createdAt,
+    totalWorkouts: existing.totalWorkouts,
+    currentStreak: existing.currentStreak,
+    longestStreak: existing.longestStreak,
     updatedAt: new Date().toISOString(),
   };
 
@@ -121,14 +127,39 @@ router.post("/:id/log-workout", (req, res) => {
 
   db.get("progress").push(logEntry).write();
 
-  // Update streak and workout count
   const newTotal = (profile.totalWorkouts || 0) + 1;
-  const newStreak = (profile.currentStreak || 0) + 1;
+
+  // BUG FIX: streak should reset to 1 if last workout was more than 1 day ago
+  let newStreak = 1;
+  if (profile.lastWorkoutDate) {
+    const last = new Date(profile.lastWorkoutDate);
+    const now = new Date();
+    // Diff in whole calendar days
+    const diffDays = Math.floor(
+      (Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) -
+        Date.UTC(last.getFullYear(), last.getMonth(), last.getDate())) /
+        86400000
+    );
+    if (diffDays <= 1) {
+      // Same day or consecutive day — extend streak
+      newStreak = (profile.currentStreak || 0) + (diffDays === 1 ? 1 : 0);
+      // If logging a second time today keep streak as-is (don't double-count)
+      if (diffDays === 0) newStreak = profile.currentStreak || 1;
+    }
+    // diffDays > 1 → streak broken, reset to 1 (already set above)
+  }
+
   const newLongest = Math.max(profile.longestStreak || 0, newStreak);
 
   db.get("profiles")
     .find({ id: req.params.id })
-    .assign({ totalWorkouts: newTotal, currentStreak: newStreak, longestStreak: newLongest, updatedAt: new Date().toISOString() })
+    .assign({
+      totalWorkouts: newTotal,
+      currentStreak: newStreak,
+      longestStreak: newLongest,
+      lastWorkoutDate: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
     .write();
 
   res.json({ success: true, logEntry, stats: { totalWorkouts: newTotal, currentStreak: newStreak, longestStreak: newLongest } });

@@ -242,6 +242,11 @@ function getMealSuggestions({ goal, diet, meals }) {
   const validGoals = ["weight_loss", "muscle_gain", "endurance", "general_health"];
   const g = validGoals.includes(goal) ? goal : "general_health";
 
+  // BUG FIX: clamp meals to a sane range so pick() is never called on undefined
+  // Use parsed value as-is (0 is valid → 1 after clamp); only default to 3 when not provided
+  const parsedMeals = Number(meals);
+  const mealCount = Math.max(1, Math.min(Number.isFinite(parsedMeals) ? parsedMeals : 3, 4));
+
   let mealBase;
   if (diet === "vegan") {
     mealBase = MEALS.vegan[g] || MEALS.vegan.general_health;
@@ -259,7 +264,9 @@ function getMealSuggestions({ goal, diet, meals }) {
     mealBase = MEALS.vegetarian[g] || MEALS.vegetarian.general_health;
   }
 
-  // Pick random meals for the requested meal count
+  // BUG FIX: guard each array before calling pick — fall back to vegetarian general_health
+  const fallback = MEALS.vegetarian.general_health;
+  const safeArr = (arr, fb) => (arr && arr.length ? arr : fb);
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
   const plan = {
@@ -271,10 +278,10 @@ function getMealSuggestions({ goal, diet, meals }) {
     postWorkoutSnack: PRE_POST_SNACKS.post_workout[Math.floor(Math.random() * PRE_POST_SNACKS.post_workout.length)],
   };
 
-  if (meals >= 1) plan.meals.push({ type: "Breakfast", ...pick(mealBase.breakfast) });
-  if (meals >= 2) plan.meals.push({ type: "Lunch", ...pick(mealBase.lunch) });
-  if (meals >= 3) plan.meals.push({ type: "Dinner", ...pick(mealBase.dinner) });
-  if (meals >= 4) plan.meals.push({ type: "Snack", ...pick(mealBase.snacks) });
+  if (mealCount >= 1) plan.meals.push({ type: "Breakfast", ...pick(safeArr(mealBase.breakfast, fallback.breakfast)) });
+  if (mealCount >= 2) plan.meals.push({ type: "Lunch",     ...pick(safeArr(mealBase.lunch,     fallback.lunch)) });
+  if (mealCount >= 3) plan.meals.push({ type: "Dinner",    ...pick(safeArr(mealBase.dinner,    fallback.dinner)) });
+  if (mealCount >= 4) plan.meals.push({ type: "Snack",     ...pick(safeArr(mealBase.snacks,    fallback.snacks)) });
 
   return plan;
 }

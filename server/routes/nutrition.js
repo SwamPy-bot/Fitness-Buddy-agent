@@ -12,7 +12,8 @@ router.get("/suggest", (req, res) => {
     const suggestions = getMealSuggestions({
       goal: goal || "general_health",
       diet: diet || "non-vegetarian",
-      meals: Number(meals) || 3,
+      // BUG FIX: pass raw string; nutritionGuide handles clamping internally
+      meals: meals !== undefined ? Number(meals) : 3,
     });
     res.json({ suggestions });
   } catch (err) {

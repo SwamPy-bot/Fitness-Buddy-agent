@@ -546,21 +546,50 @@
   }
 
   function formatMessage(text) {
-    // Convert markdown-like syntax to HTML
-    return text
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`(.*?)`/g, '<code>$1</code>')
-      .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
-      .replace(/^### (.+)$/gm, '<h4 style="margin:10px 0 5px;color:var(--accent2)">$1</h4>')
-      .replace(/^## (.+)$/gm, '<h4 style="margin:10px 0 5px;font-size:15px">$1</h4>')
-      .replace(/^- (.+)$/gm, '<li>$1</li>')
-      .replace(/(<li>.*<\/li>\n?)+/gs, '<ul>$&</ul>')
-      .replace(/\n\n+/g, '</p><p>')
-      .replace(/\n/g, '<br/>')
-      .replace(/^(?!<[hul])(.+)$/gm, '<p>$1</p>')
-      .replace(/<p><\/p>/g, '');
+    // BUG FIX: rewritten to avoid double-wrapping list items in <ul>, stray
+    // <p> tags around block elements, and the broken s-flag regex on older engines.
+    // Process line-by-line so block vs inline context is respected.
+    const escaped = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    const lines = escaped.split('\n');
+    const out = [];
+    let inList = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      let line = lines[i];
+
+      // Inline formatting
+      line = line
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`(.*?)`/g, '<code>$1</code>');
+
+      // Block elements — close open list first
+      if (/^### (.+)$/.test(line)) {
+        if (inList) { out.push('</ul>'); inList = false; }
+        out.push(line.replace(/^### (.+)$/, '<h4 style="margin:10px 0 5px;color:var(--accent2)">$1</h4>'));
+      } else if (/^## (.+)$/.test(line)) {
+        if (inList) { out.push('</ul>'); inList = false; }
+        out.push(line.replace(/^## (.+)$/, '<h4 style="margin:10px 0 5px;font-size:15px">$1</h4>'));
+      } else if (/^&gt; (.+)$/.test(line)) {
+        if (inList) { out.push('</ul>'); inList = false; }
+        out.push(line.replace(/^&gt; (.+)$/, '<blockquote>$1</blockquote>'));
+      } else if (/^- (.+)$/.test(line)) {
+        if (!inList) { out.push('<ul>'); inList = true; }
+        out.push(line.replace(/^- (.+)$/, '<li>$1</li>'));
+      } else if (line.trim() === '') {
+        if (inList) { out.push('</ul>'); inList = false; }
+        out.push('');
+      } else {
+        if (inList) { out.push('</ul>'); inList = false; }
+        out.push('<p>' + line + '</p>');
+      }
+    }
+    if (inList) out.push('</ul>');
+    return out.join('\n');
   }
 
   function showTyping() {
@@ -587,7 +616,9 @@
   }
 
   function quickAction(msg) {
-    document.getElementById('messageInput').value = msg;
+    // BUG FIX: clear textarea before passing msg directly to sendMessage
+    // so the textarea value is never read as a second message
+    document.getElementById('messageInput').value = '';
     sendMessage(msg);
   }
 
@@ -633,6 +664,16 @@
 
   // ── Profile Modal ─────────────────────────────────────
   function openProfileModal() {
+    // BUG FIX: reset all form fields so stale data from a previous open is cleared
+    document.getElementById('pName').value = '';
+    document.getElementById('pAge').value = '';
+    document.getElementById('pGender').value = '';
+    document.getElementById('pLevel').value = 'beginner';
+    document.getElementById('pGoal').value = 'general_health';
+    document.getElementById('pTime').value = '';
+    document.getElementById('pEquipment').value = 'none';
+    document.getElementById('pDiet').value = 'non-vegetarian';
+    document.getElementById('pInjuries').value = '';
     document.getElementById('profileModal').classList.add('open');
   }
 
@@ -715,8 +756,10 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workoutType: 'general', durationMinutes: 30 }),
       });
+      // BUG FIX: await loadProfiles() so the profiles array is fresh before
+      // updateStatsBar reads it — previously it read the stale cached array
       await loadProfiles();
-      updateStatsBar();
+      await updateStatsBar();
       await openProgressModal();
     } catch(e) { alert('Could not log workout.'); }
   }
