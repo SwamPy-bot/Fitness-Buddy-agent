@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fitness Buddy — AI Health Coach</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d2e;
+      --surface2: #242740;
+      --border: #2e3150;
+      --text: #e8eaf6;
+      --muted: #8b90b8;
+      --accent: #6c63ff;
+      --accent2: #ff6584;
+      --green: #43e97b;
+      --orange: #f9a825;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --font: -apple-system, "Segoe UI", system-ui, sans-serif;
+    }
+    html, body { height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); overflow: hidden; }
+
+    /* ── Layout ───────────────────────────────────────── */
+    .app { display: flex; height: 100vh; }
+
+    /* ── Sidebar ──────────────────────────────────────── */
+    .sidebar {
+      width: 280px; min-width: 280px; background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 20px 16px;
+      transition: transform 0.3s; z-index: 100;
+    }
+    .sidebar.collapsed { transform: translateX(-280px); position: absolute; height: 100%; }
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+    .logo-icon { width: 40px; height: 40px; background: var(--accent); border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .logo h1 { font-size: 18px; font-weight: 700; color: var(--text); }
+    .logo span { font-size: 11px; color: var(--muted); display: block; }
+
+    .sidebar-section { margin-bottom: 24px; }
+    .sidebar-section h3 { font-size: 11px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+
+    .new-chat-btn { width: 100%; padding: 10px 14px; background: var(--accent);
+      border: none; border-radius: var(--radius-sm); color: #fff;
+      font-size: 14px; font-weight: 600; cursor: pointer; display: flex;
+      align-items: center; gap: 8px; transition: opacity 0.2s; }
+    .new-chat-btn:hover { opacity: 0.85; }
+
+    /* Profile cards */
+    .profile-list { display: flex; flex-direction: column; gap: 6px; }
+    .profile-item { padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+      cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.15s; }
+    .profile-item:hover, .profile-item.active { background: var(--surface2); border-color: var(--accent); }
+    .profile-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent2);
+      display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+    .profile-info { overflow: hidden; }
+    .profile-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .profile-meta { font-size: 11px; color: var(--muted); }
+
+    .add-profile-btn { width: 100%; padding: 8px 12px; background: transparent;
+      border: 1px dashed var(--border); border-radius: var(--radius-sm);
+      color: var(--muted); font-size: 13px; cursor: pointer; display: flex;
+      align-items: center; gap: 6px; margin-top: 6px; transition: all 0.15s; }
+    .add-profile-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Quick actions */
+    .quick-btns { display: flex; flex-direction: column; gap: 6px; }
+    .quick-btn { padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text); font-size: 13px;
+      cursor: pointer; text-align: left; display: flex; align-items: center;
+      gap: 8px; transition: all 0.15s; }
+    .quick-btn:hover { border-color: var(--accent); background: var(--surface); }
+    .quick-btn .qicon { font-size: 16px; }
+
+    .sidebar-footer { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--muted); text-align: center; line-height: 1.6; }
+
+    /* ── Main chat area ───────────────────────────────── */
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+    /* Top bar */
+    .topbar { padding: 14px 20px; background: var(--surface); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px; }
+    .hamburger { background: none; border: none; color: var(--muted); font-size: 20px;
+      cursor: pointer; padding: 4px; border-radius: 6px; display: none; }
+    .hamburger:hover { color: var(--text); }
+    .topbar-title { font-weight: 700; font-size: 16px; flex: 1; }
+    .topbar-status { font-size: 12px; color: var(--green); display: flex; align-items: center; gap: 5px; }
+    .status-dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%;
+      animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .stats-bar { display: flex; gap: 16px; }
+    .stat-chip { background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 20px; padding: 4px 12px; font-size: 12px; color: var(--muted);
+      display: flex; align-items: center; gap: 5px; }
+    .stat-chip span { color: var(--text); font-weight: 600; }
+
+    /* Messages */
+    .messages { flex: 1; overflow-y: auto; padding: 24px 20px; display: flex; flex-direction: column; gap: 16px; }
+    .messages::-webkit-scrollbar { width: 6px; }
+    .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .msg { display: flex; gap: 12px; max-width: 780px; }
+    .msg.user { flex-direction: row-reverse; align-self: flex-end; }
+    .msg.assistant { align-self: flex-start; }
+
+    .msg-avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .msg.assistant .msg-avatar { background: var(--accent); }
+    .msg.user .msg-avatar { background: var(--accent2); }
+
+    .msg-bubble { padding: 14px 18px; border-radius: var(--radius);
+      font-size: 14px; line-height: 1.7; max-width: 640px; }
+    .msg.assistant .msg-bubble { background: var(--surface); border: 1px solid var(--border); border-top-left-radius: 4px; }
+    .msg.user .msg-bubble { background: var(--accent); color: #fff; border-top-right-radius: 4px; }
+
+    .msg-bubble p { margin-bottom: 8px; }
+    .msg-bubble p:last-child { margin-bottom: 0; }
+    .msg-bubble strong { color: var(--accent2); }
+    .msg.user .msg-bubble strong { color: #fff; }
+    .msg-bubble ul, .msg-bubble ol { padding-left: 20px; margin: 8px 0; }
+    .msg-bubble li { margin-bottom: 4px; }
+    .msg-bubble blockquote { border-left: 3px solid var(--accent); padding-left: 12px; color: var(--muted); margin: 8px 0; font-size: 13px; }
+    .msg-bubble code { background: var(--surface2); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+    .msg-time { font-size: 11px; color: var(--muted); margin-top: 4px;
+      text-align: right; }
+    .msg.user .msg-time { text-align: left; }
+
+    /* Typing indicator */
+    .typing-indicator { display: flex; gap: 5px; align-items: center; padding: 14px 18px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      border-top-left-radius: 4px; width: fit-content; }
+    .typing-dot { width: 8px; height: 8px; background: var(--muted); border-radius: 50%; animation: typingAnim 1.4s infinite; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingAnim { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+    /* Welcome card */
+    .welcome-card { background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px; max-width: 560px; margin: 24px auto; }
+    .welcome-card h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .welcome-card p { color: var(--muted); font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
+    .welcome-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .welcome-chip { padding: 8px 14px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 20px; font-size: 13px; cursor: pointer; transition: all 0.15s; }
+    .welcome-chip:hover { border-color: var(--accent); color: var(--accent); }
+    .disclaimer-card { background: rgba(249,168,37,0.1); border: 1px solid rgba(249,168,37,0.3);
+      border-radius: var(--radius-sm); padding: 12px 16px; font-size: 12px;
+      color: #f9a825; margin-top: 16px; line-height: 1.5; }
+
+    /* Input area */
+    .input-area { padding: 16px 20px; background: var(--surface); border-top: 1px solid var(--border); }
+    .input-row { display: flex; gap: 10px; align-items: flex-end;
+      background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 10px 14px; transition: border-color 0.2s; }
+    .input-row:focus-within { border-color: var(--accent); }
+    textarea#messageInput {
+      flex: 1; background: none; border: none; outline: none; color: var(--text);
+      font-family: var(--font); font-size: 15px; resize: none; max-height: 160px;
+      min-height: 24px; line-height: 1.5; }
+    textarea#messageInput::placeholder { color: var(--muted); }
+    .send-btn { width: 40px; height: 40px; background: var(--accent);
+      border: none; border-radius: 10px; color: #fff; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      font-size: 18px; transition: opacity 0.2s; }
+    .send-btn:hover { opacity: 0.85; }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .input-hints { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .hint-chip { padding: 5px 12px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 16px; font-size: 12px; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+    .hint-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Modals ───────────────────────────────────────── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center; z-index: 999;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal { background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px; width: 100%; max-width: 480px;
+      max-height: 90vh; overflow-y: auto; }
+    .modal h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+    .modal p.sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--muted); }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 10px 14px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      color: var(--text); font-family: var(--font); font-size: 14px; outline: none;
+      transition: border-color 0.2s; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+    .form-group select option { background: var(--surface2); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-btns { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+    .btn { padding: 10px 20px; border-radius: var(--radius-sm); font-size: 14px;
+      font-weight: 600; cursor: pointer; border: none; transition: opacity 0.2s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+    .btn:hover { opacity: 0.85; }
+
+    /* Workout/Meal cards in chat */
+    .workout-card { background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px; margin-top: 10px; }
+    .workout-card h4 { font-size: 13px; font-weight: 700; color: var(--accent2); margin-bottom: 8px; }
+    .exercise-row { display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .exercise-row:last-child { border-bottom: none; }
+    .exercise-row .ex-name { font-weight: 500; }
+    .exercise-row .ex-detail { color: var(--muted); font-size: 12px; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .sidebar { position: absolute; }
+      .hamburger { display: block; }
+      .stats-bar { display: none; }
+      .msg-bubble { max-width: 280px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ── Sidebar ─────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="logo">
+      <div class="logo-icon">💪</div>
+      <div>
+        <h1>Fitness Buddy</h1>
+        <span>Powered by IBM Watsonx.ai</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <button class="new-chat-btn" onclick="newChat()">
+        <span>＋</span> New Conversation
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Profiles</h3>
+      <div class="profile-list" id="profileList">
+        <!-- Populated by JS -->
+      </div>
+      <button class="add-profile-btn" onclick="openProfileModal()">
+        ＋ Add Profile (max 5)
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Quick Actions</h3>
+      <div class="quick-btns">
+        <button class="quick-btn" onclick="quickAction('Generate a workout for me right now!')">
+          <span class="qicon">🏋️</span> Generate Workout
+        </button>
+        <button class="quick-btn" onclick="quickAction('Suggest a healthy meal plan for today.')">
+          <span class="qicon">🥗</span> Meal Plan
+        </button>
+        <button class="quick-btn" onclick="quickAction('Give me a motivational message to get started!')">
+          <span class="qicon">🌟</span> Motivate Me
+        </button>
+        <button class="quick-btn" onclick="quickAction('Create a family workout we can all do together.')">
+          <span class="qicon">👨‍👩‍👧</span> Family Workout
+        </button>
+        <button class="quick-btn" onclick="openProgressModal()">
+          <span class="qicon">📊</span> My Progress
+        </button>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      Fitness Buddy v1.0<br/>
+      IBM Watsonx.ai Granite<br/>
+      <span style="color:#ff6584">⚕️ Not a medical service</span>
+    </div>
+  </aside>
+
+  <!-- ── Main ───────────────────────────────────────── -->
+  <main class="main">
+    <!-- Top bar -->
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title" id="topbarTitle">💪 Fitness Buddy Chat</div>
+      <div class="stats-bar" id="statsBar" style="display:none">
+        <div class="stat-chip">🔥 Streak: <span id="streakCount">0</span> days</div>
+        <div class="stat-chip">🏋️ Workouts: <span id="workoutCount">0</span></div>
+      </div>
+      <div class="topbar-status">
+        <div class="status-dot"></div> Online
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div class="messages" id="messages">
+      <!-- Welcome card shown initially -->
+      <div id="welcomeCard" class="welcome-card">
+        <h2>Hey there! 👋 I'm Fitness Buddy</h2>
+        <p>Your personal AI-powered health and fitness coach built on <strong>IBM Watsonx.ai Granite</strong>. I can build personalized workout plans, suggest healthy meals, track your progress, and keep you motivated every day!</p>
+        <div class="welcome-chips">
+          <div class="welcome-chip" onclick="quickAction('I have 20 minutes and no equipment. Give me a workout!')">⚡ Quick 20-min workout</div>
+          <div class="welcome-chip" onclick="quickAction('I am a beginner. Help me get started with fitness.')">🌱 I\'m a beginner</div>
+          <div class="welcome-chip" onclick="quickAction('Suggest healthy Indian meals for weight loss.')">🥗 Healthy meals</div>
+          <div class="welcome-chip" onclick="quickAction('I feel demotivated. Can you help?')">😔 I\'m unmotivated</div>
+          <div class="welcome-chip" onclick="quickAction('I want to lose weight. Create a plan for me.')">🎯 Weight loss plan</div>
+          <div class="welcome-chip" onclick="quickAction('I want to build muscle. What should I do?')">💪 Build muscle</div>
+        </div>
+        <div class="disclaimer-card">
+          ⚕️ I'm a fitness coach, not a doctor. Always consult a physician before starting new exercise programs, especially if you have health conditions, injuries, or are pregnant.
+        </div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <div class="input-hints" id="inputHints">
+        <span class="hint-chip" onclick="insertHint('How many calories should I eat?')">Calories?</span>
+        <span class="hint-chip" onclick="insertHint('What should I eat before a workout?')">Pre-workout food</span>
+        <span class="hint-chip" onclick="insertHint('I have back pain. What exercises are safe?')">Injury safe exercises</span>
+        <span class="hint-chip" onclick="insertHint('Make a 7-day workout plan for me.')">7-day plan</span>
+      </div>
+      <div class="input-row">
+        <textarea id="messageInput" rows="1" placeholder="Ask me anything about fitness, workouts, nutrition..."></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">➤</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ── Add Profile Modal ───────────────────────────── -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal">
+    <h2>Create Profile</h2>
+    <p class="sub">Tell me about yourself so I can personalize your plan!</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Name *</label>
+        <input type="text" id="pName" placeholder="Your name" />
+      </div>
+      <div class="form-group">
+        <label>Age</label>
+        <input type="number" id="pAge" placeholder="25" min="5" max="120" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Gender</label>
+        <select id="pGender">
+          <option value="">Prefer not to say</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Fitness Level</label>
+        <select id="pLevel">
+          <option value="beginner">Beginner</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Primary Goal</label>
+        <select id="pGoal">
+          <option value="general_health">General Health</option>
+          <option value="weight_loss">Weight Loss</option>
+          <option value="muscle_gain">Muscle Gain</option>
+          <option value="endurance">Endurance</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Time/Day (minutes)</label>
+        <input type="number" id="pTime" placeholder="30" min="5" max="120" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Equipment</label>
+        <select id="pEquipment">
+          <option value="none">None (bodyweight)</option>
+          <option value="minimal">Minimal (bands, dumbbells)</option>
+          <option value="full">Full gym</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Dietary Preference</label>
+        <select id="pDiet">
+          <option value="non-vegetarian">Non-Vegetarian</option>
+          <option value="vegetarian">Vegetarian</option>
+          <option value="vegan">Vegan</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Injuries / Limitations</label>
+      <input type="text" id="pInjuries" placeholder="e.g. bad knees, lower back pain (leave blank if none)" />
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" onclick="closeModal('profileModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProfile()">Create Profile 💪</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Progress Modal ─────────────────────────────── -->
+<div class="modal-overlay" id="progressModal">
+  <div class="modal">
+    <h2>📊 My Progress</h2>
+    <p class="sub" id="progressProfileName">Select a profile to view progress</p>
+    <div id="progressContent" style="color: var(--muted); text-align: center; padding: 20px;">
+      No profile selected.
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" onclick="closeModal('progressModal')">Close</button>
+      <button class="btn btn-primary" onclick="logWorkout()">Log Today's Workout ✅</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── State ────────────────────────────────────────────
+  let sessionId = localStorage.getItem('fb_session') || null;
+  let activeProfileId = localStorage.getItem('fb_profile') || null;
+  let profiles = [];
+
+  // ── Init ─────────────────────────────────────────────
+  async function init() {
+    await loadProfiles();
+    if (!sessionId) sessionId = generateId();
+    localStorage.setItem('fb_session', sessionId);
+    updateStatsBar();
+  }
+
+  function generateId() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+  }
+
+  // ── Profiles ─────────────────────────────────────────
+  async function loadProfiles() {
+    try {
+      const res = await fetch('/api/profiles');
+      const data = await res.json();
+      profiles = data.profiles || [];
+      renderProfiles();
+    } catch(e) { console.warn('Could not load profiles', e); }
+  }
+
+  function renderProfiles() {
+    const list = document.getElementById('profileList');
+    list.innerHTML = '';
+    profiles.forEach(p => {
+      const initials = p.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+      const colors = ['#6c63ff','#ff6584','#43e97b','#f9a825','#36d1dc'];
+      const color = colors[profiles.indexOf(p) % colors.length];
+      const item = document.createElement('div');
+      item.className = 'profile-item' + (p.id === activeProfileId ? ' active' : '');
+      item.innerHTML = `
+        <div class="profile-avatar" style="background:${color}">${initials}</div>
+        <div class="profile-info">
+          <div class="profile-name">${p.name}</div>
+          <div class="profile-meta">${p.fitnessLevel} · ${p.goal.replace('_',' ')}</div>
+        </div>`;
+      item.onclick = () => selectProfile(p.id);
+      list.appendChild(item);
+    });
+  }
+
+  function selectProfile(id) {
+    activeProfileId = id;
+    localStorage.setItem('fb_profile', id);
+    renderProfiles();
+    updateStatsBar();
+    const p = profiles.find(x => x.id === id);
+    if (p) {
+      document.getElementById('topbarTitle').textContent = `💪 ${p.name}'s Fitness Chat`;
+    }
+  }
+
+  async function updateStatsBar() {
+    if (!activeProfileId) return;
+    const p = profiles.find(x => x.id === activeProfileId);
+    if (!p) return;
+    document.getElementById('streakCount').textContent = p.currentStreak || 0;
+    document.getElementById('workoutCount').textContent = p.totalWorkouts || 0;
+    document.getElementById('statsBar').style.display = 'flex';
+  }
+
+  // ── Chat ─────────────────────────────────────────────
+  async function sendMessage(text) {
+    const input = document.getElementById('messageInput');
+    const message = text || input.value.trim();
+    if (!message) return;
+
+    input.value = '';
+    input.style.height = 'auto';
+    hideWelcomeCard();
+    document.getElementById('inputHints').style.display = 'none';
+
+    appendMessage('user', message);
+    const typingEl = showTyping();
+
+    document.getElementById('sendBtn').disabled = true;
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, sessionId, profileId: activeProfileId }),
+      });
+      const data = await res.json();
+      removeTyping(typingEl);
+      appendMessage('assistant', data.reply || data.error || 'Something went wrong. Try again!');
+      sessionId = data.sessionId || sessionId;
+      localStorage.setItem('fb_session', sessionId);
+    } catch(e) {
+      removeTyping(typingEl);
+      appendMessage('assistant', '⚠️ Could not reach the server. Make sure the Fitness Buddy server is running (`npm start`).');
+    } finally {
+      document.getElementById('sendBtn').disabled = false;
+    }
+  }
+
+  function appendMessage(role, text) {
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `msg ${role}`;
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const avatar = role === 'assistant' ? '💪' : '👤';
+    div.innerHTML = `
+      <div class="msg-avatar">${avatar}</div>
+      <div>
+        <div class="msg-bubble">${formatMessage(text)}</div>
+        <div class="msg-time">${time}</div>
+      </div>`;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function formatMessage(text) {
+    // Convert markdown-like syntax to HTML
+    return text
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`(.*?)`/g, '<code>$1</code>')
+      .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+      .replace(/^### (.+)$/gm, '<h4 style="margin:10px 0 5px;color:var(--accent2)">$1</h4>')
+      .replace(/^## (.+)$/gm, '<h4 style="margin:10px 0 5px;font-size:15px">$1</h4>')
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>.*<\/li>\n?)+/gs, '<ul>$&</ul>')
+      .replace(/\n\n+/g, '</p><p>')
+      .replace(/\n/g, '<br/>')
+      .replace(/^(?!<[hul])(.+)$/gm, '<p>$1</p>')
+      .replace(/<p><\/p>/g, '');
+  }
+
+  function showTyping() {
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = 'msg assistant';
+    div.innerHTML = `
+      <div class="msg-avatar">💪</div>
+      <div class="typing-indicator">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>`;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+    return div;
+  }
+
+  function removeTyping(el) { if (el) el.remove(); }
+
+  function hideWelcomeCard() {
+    const card = document.getElementById('welcomeCard');
+    if (card) card.remove();
+  }
+
+  function quickAction(msg) {
+    document.getElementById('messageInput').value = msg;
+    sendMessage(msg);
+  }
+
+  function insertHint(text) {
+    document.getElementById('messageInput').value = text;
+    document.getElementById('messageInput').focus();
+  }
+
+  function newChat() {
+    sessionId = generateId();
+    localStorage.setItem('fb_session', sessionId);
+    const messages = document.getElementById('messages');
+    messages.innerHTML = `
+      <div id="welcomeCard" class="welcome-card">
+        <h2>New Conversation! 🚀</h2>
+        <p>Ready for a fresh start? What's your fitness goal today?</p>
+        <div class="welcome-chips">
+          <div class="welcome-chip" onclick="quickAction('I have 20 minutes and no equipment. Give me a workout!')">⚡ Quick workout</div>
+          <div class="welcome-chip" onclick="quickAction('Suggest a healthy meal for today.')">🥗 Meal idea</div>
+          <div class="welcome-chip" onclick="quickAction('Motivate me!')">🌟 Motivate me</div>
+        </div>
+      </div>`;
+    document.getElementById('inputHints').style.display = 'flex';
+  }
+
+  // ── Auto-resize textarea ──────────────────────────────
+  document.getElementById('messageInput').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 160) + 'px';
+  });
+
+  document.getElementById('messageInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  // ── Sidebar toggle ────────────────────────────────────
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+  }
+
+  // ── Profile Modal ─────────────────────────────────────
+  function openProfileModal() {
+    document.getElementById('profileModal').classList.add('open');
+  }
+
+  async function saveProfile() {
+    const name = document.getElementById('pName').value.trim();
+    if (!name) { alert('Please enter a name!'); return; }
+
+    const payload = {
+      name,
+      age: document.getElementById('pAge').value || null,
+      gender: document.getElementById('pGender').value || null,
+      fitnessLevel: document.getElementById('pLevel').value,
+      goal: document.getElementById('pGoal').value,
+      availableTime: document.getElementById('pTime').value || 30,
+      equipment: document.getElementById('pEquipment').value,
+      dietaryPreference: document.getElementById('pDiet').value,
+      injuries: document.getElementById('pInjuries').value || null,
+    };
+
+    try {
+      const res = await fetch('/api/profiles', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.errors?.join(', ') || data.error);
+      await loadProfiles();
+      selectProfile(data.profile.id);
+      closeModal('profileModal');
+      quickAction(`Hi! I just set up my profile. My name is ${data.profile.name}, I'm a ${data.profile.fitnessLevel} with the goal of ${data.profile.goal.replace('_',' ')}. What should I do first?`);
+    } catch(e) {
+      alert('Error: ' + e.message);
+    }
+  }
+
+  // ── Progress Modal ────────────────────────────────────
+  async function openProgressModal() {
+    document.getElementById('progressModal').classList.add('open');
+    if (!activeProfileId) {
+      document.getElementById('progressContent').innerHTML = '<p style="color:var(--muted)">Select a profile from the sidebar first!</p>';
+      return;
+    }
+    try {
+      const res = await fetch(`/api/profiles/${activeProfileId}/progress`);
+      const data = await res.json();
+      const p = data.profile;
+      document.getElementById('progressProfileName').textContent = p.name + "'s Stats";
+      const recentLogs = (data.logs || []).slice(-5).reverse();
+      document.getElementById('progressContent').innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+          <div style="background:var(--surface2);padding:14px;border-radius:10px;text-align:center">
+            <div style="font-size:24px;font-weight:700;color:var(--accent)">${p.totalWorkouts || 0}</div>
+            <div style="font-size:12px;color:var(--muted)">Total Workouts</div>
+          </div>
+          <div style="background:var(--surface2);padding:14px;border-radius:10px;text-align:center">
+            <div style="font-size:24px;font-weight:700;color:var(--accent2)">${p.currentStreak || 0}</div>
+            <div style="font-size:12px;color:var(--muted)">Current Streak</div>
+          </div>
+          <div style="background:var(--surface2);padding:14px;border-radius:10px;text-align:center">
+            <div style="font-size:24px;font-weight:700;color:var(--green)">${p.longestStreak || 0}</div>
+            <div style="font-size:12px;color:var(--muted)">Best Streak</div>
+          </div>
+        </div>
+        ${recentLogs.length ? `
+          <h4 style="font-size:13px;margin-bottom:8px;color:var(--muted)">Recent Workouts</h4>
+          ${recentLogs.map(l => `
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+              <span>${l.workoutType} ${l.durationMinutes ? '· ' + l.durationMinutes + ' min' : ''}</span>
+              <span style="color:var(--muted)">${new Date(l.date).toLocaleDateString()}</span>
+            </div>`).join('')}
+        ` : '<p style="color:var(--muted);font-size:13px">No workouts logged yet. Keep going! 💪</p>'}`;
+    } catch(e) {
+      document.getElementById('progressContent').innerHTML = '<p style="color:var(--muted)">Could not load progress data.</p>';
+    }
+  }
+
+  async function logWorkout() {
+    if (!activeProfileId) { alert('Select a profile first!'); return; }
+    try {
+      await fetch(`/api/profiles/${activeProfileId}/log-workout`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workoutType: 'general', durationMinutes: 30 }),
+      });
+      await loadProfiles();
+      updateStatsBar();
+      await openProgressModal();
+    } catch(e) { alert('Could not log workout.'); }
+  }
+
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  // ── Click outside to close modal ─────────────────────
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.classList.remove('open');
+    });
+  });
+
+  init();
+</script>
+</body>
+</html>

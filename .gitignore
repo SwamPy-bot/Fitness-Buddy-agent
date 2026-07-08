@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Environment secrets — NEVER commit this
+.env
+
+# Database (runtime data)
+data/db.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
