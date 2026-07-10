@@ -431,6 +431,7 @@
   let sessionId = localStorage.getItem('fb_session') || null;
   let activeProfileId = localStorage.getItem('fb_profile') || null;
   let profiles = [];
+  let isLoading = false; // prevents double-send and stuck button
 
   // ── Init ─────────────────────────────────────────────
   async function init() {
@@ -499,10 +500,12 @@
 
   // ── Chat ─────────────────────────────────────────────
   async function sendMessage(text) {
+    if (isLoading) return; // ignore clicks while a request is in flight
     const input = document.getElementById('messageInput');
     const message = text || input.value.trim();
     if (!message) return;
 
+    isLoading = true;
     input.value = '';
     input.style.height = 'auto';
     hideWelcomeCard();
@@ -510,8 +513,8 @@
 
     appendMessage('user', message);
     const typingEl = showTyping();
-
-    document.getElementById('sendBtn').disabled = true;
+    const sendBtn = document.getElementById('sendBtn');
+    sendBtn.disabled = true;
 
     try {
       const res = await fetch('/api/chat', {
@@ -526,9 +529,10 @@
       localStorage.setItem('fb_session', sessionId);
     } catch(e) {
       removeTyping(typingEl);
-      appendMessage('assistant', '⚠️ Could not reach the server. Make sure the Fitness Buddy server is running (`npm start`).');
+      appendMessage('assistant', '⚠️ Could not reach the server. Make sure the Fitness Buddy server is running on the correct port (`npm start`).');
     } finally {
-      document.getElementById('sendBtn').disabled = false;
+      isLoading = false;
+      sendBtn.disabled = false;
     }
   }
 

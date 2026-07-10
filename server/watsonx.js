@@ -121,27 +121,11 @@ async function generateResponse(conversationHistory, userProfile = {}) {
     if (!text) throw new Error("Empty response from model.");
     return text.trim();
   } catch (err) {
-    // Catch all auth / credential / config errors → return fallback instead of crashing
-    const msg = (err.message || "").toLowerCase();
-    const isAuthError =
-      msg.includes("project_id") ||
-      msg.includes("api key") ||
-      msg.includes("api_key") ||
-      msg.includes("apikey") ||
-      msg.includes("401") ||
-      msg.includes("403") ||
-      msg.includes("unauthorized") ||
-      msg.includes("not authenticated") ||
-      msg.includes("invalid credentials") ||
-      msg.includes("could not be found") ||     // IBM IAM: "API key could not be found"
-      msg.includes("bxnim") ||                  // IBM IAM error codes e.g. BXNIM0415E
-      msg.includes("serviceurl") ||
-      msg.includes("access is denied") ||
-      (err.status && (err.status === 401 || err.status === 403));
-    if (isAuthError) {
-      return getFallbackResponse(conversationHistory);
-    }
-    throw err;
+    // Always return fallback — never throw to the caller.
+    // Log the real error so it's visible in server console for debugging,
+    // but the user always gets a helpful response instead of a 500.
+    console.error("[Watsonx error]", err.message || err);
+    return getFallbackResponse(conversationHistory);
   }
 }
 
