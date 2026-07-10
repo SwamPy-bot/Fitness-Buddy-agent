@@ -4,14 +4,24 @@
  * Handles authentication and text generation requests
  */
 const { WatsonXAI } = require("@ibm-cloud/watsonx-ai");
+const { IamAuthenticator } = require("ibm-cloud-sdk-core");
 
 let client = null;
 
 function getClient() {
   if (!client) {
+    const apiKey = process.env.WATSONX_API_KEY || process.env.WATSONX_APIKEY;
+    if (!apiKey) {
+      throw new Error("WATSONX_API_KEY is not set in .env");
+    }
+    // IMPORTANT: WatsonXAI.newInstance() auto-detects auth from the env var
+    // named "WATSONX_APIKEY" (no underscore). Our .env uses WATSONX_API_KEY
+    // (with underscore). We must pass the authenticator explicitly so the SDK
+    // never tries — and fails — to build one from the environment.
     client = WatsonXAI.newInstance({
       version: "2024-05-31",
       serviceUrl: process.env.WATSONX_URL || "https://us-south.ml.cloud.ibm.com",
+      authenticator: new IamAuthenticator({ apikey: apiKey }),
     });
   }
   return client;
@@ -79,27 +89,28 @@ async function generateResponse(conversationHistory, userProfile = {}) {
 
   const fullSystemPrompt = SYSTEM_PROMPT + profileContext;
 
-  // Map conversation history to Watsonx chat message format
-  const messages = conversationHistory.map((m) => ({
-    role: m.role === "assistant" ? "assistant" : "user",
-    content: m.content,
-  }));
+  // The Watsonx textChat API does NOT accept a top-level "system" parameter.
+  // The system prompt must be the first message with role "system" in the array.
+  const messages = [
+    { role: "system", content: fullSystemPrompt },
+    ...conversationHistory.map((m) => ({
+      role: m.role === "assistant" ? "assistant" : "user",
+      content: m.content,
+    })),
+  ];
 
   try {
-    // Llama 3.3 70B Instruct — optimal parameters for a conversational fitness coach:
-    //   temperature  0.7  — balanced creativity without rambling
-    //   topP         0.9  — nucleus sampling; keeps output focused
-    //   maxTokens    800  — enough for a full workout plan; not wasteful
-    //   repetitionPenalty 1.05 — gentle penalty, Llama needs less than Granite
+    // Llama 3.3 70B Instruct optimal parameters:
+    //   temperature 0.7  — balanced creativity without rambling
+    //   topP        0.9  — nucleus sampling keeps output focused
+    //   maxTokens   800  — enough for a full workout plan
     const response = await wx.textChat({
       modelId,
       projectId,
       messages,
-      system: fullSystemPrompt,
       maxTokens: 800,
       temperature: 0.7,
       topP: 0.9,
-      repetitionPenalty: 1.05,
     });
 
     const text =
@@ -110,19 +121,24 @@ async function generateResponse(conversationHistory, userProfile = {}) {
     if (!text) throw new Error("Empty response from model.");
     return text.trim();
   } catch (err) {
-    // Broad auth/config error catch → return fallback instead of crashing
-    const msg = err.message || "";
-    if (
-      msg.includes("PROJECT_ID") ||
-      msg.includes("API key") ||
+    // Catch all auth / credential / config errors → return fallback instead of crashing
+    const msg = (err.message || "").toLowerCase();
+    const isAuthError =
+      msg.includes("project_id") ||
+      msg.includes("api key") ||
       msg.includes("api_key") ||
+      msg.includes("apikey") ||
       msg.includes("401") ||
       msg.includes("403") ||
-      msg.includes("Unauthorized") ||
+      msg.includes("unauthorized") ||
       msg.includes("not authenticated") ||
-      msg.includes("serviceUrl") ||
-      (err.status && (err.status === 401 || err.status === 403))
-    ) {
+      msg.includes("invalid credentials") ||
+      msg.includes("could not be found") ||     // IBM IAM: "API key could not be found"
+      msg.includes("bxnim") ||                  // IBM IAM error codes e.g. BXNIM0415E
+      msg.includes("serviceurl") ||
+      msg.includes("access is denied") ||
+      (err.status && (err.status === 401 || err.status === 403));
+    if (isAuthError) {
       return getFallbackResponse(conversationHistory);
     }
     throw err;

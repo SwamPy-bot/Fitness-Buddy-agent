@@ -11,7 +11,7 @@ const workoutsRouter = require("./routes/workouts");
 const nutritionRouter = require("./routes/nutrition");
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 
 // ── Security middleware ─────────────────────────────────────────
 app.use(
