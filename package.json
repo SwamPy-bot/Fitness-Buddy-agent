@@ -1,7 +1,7 @@
 {
   "name": "fitness-buddy-agent",
   "version": "1.0.0",
-  "description": "AI-powered fitness coach built on IBM Watsonx.ai Granite",
+  "description": "AI-powered fitness coach built on IBM Watsonx.ai — Llama 3.3 70B Instruct",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",

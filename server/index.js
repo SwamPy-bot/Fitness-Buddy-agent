@@ -11,7 +11,7 @@ const workoutsRouter = require("./routes/workouts");
 const nutritionRouter = require("./routes/nutrition");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // ── Security middleware ─────────────────────────────────────────
 app.use(
@@ -69,5 +69,5 @@ app.get(/^(?!\/api\/).*$/, (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`✅  Fitness Buddy running at http://localhost:${PORT}`);
-  console.log(`   Granite model: ${process.env.GRANITE_MODEL_ID || "ibm/granite-13b-chat-v2"}`);
+  console.log(`   Model: ${process.env.GRANITE_MODEL_ID || "meta-llama/llama-3-3-70b-instruct"}`);
 });

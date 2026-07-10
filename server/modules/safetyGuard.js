@@ -1,6 +1,6 @@
 /**
  * Safety & boundary checks module
- * Screens user messages for dangerous topics before sending to Granite
+ * Screens user messages for dangerous topics before sending to the LLM
  */
 
 const DANGEROUS_PATTERNS = [

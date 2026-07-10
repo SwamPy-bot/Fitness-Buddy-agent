@@ -1,5 +1,6 @@
 /**
- * IBM Watsonx.ai Granite integration module
+ * IBM Watsonx.ai integration module
+ * Model: meta-llama/llama-3-3-70b-instruct
  * Handles authentication and text generation requests
  */
 const { WatsonXAI } = require("@ibm-cloud/watsonx-ai");
@@ -16,7 +17,7 @@ function getClient() {
   return client;
 }
 
-const SYSTEM_PROMPT = `You are Fitness Buddy, an AI-powered health and fitness coach built on IBM Watsonx.ai Granite.
+const SYSTEM_PROMPT = `You are Fitness Buddy, an AI-powered health and fitness coach built on IBM Watsonx.ai.
 Your persona:
 - Friendly, energetic, encouraging — never judgmental
 - Use casual, conversational language
@@ -45,17 +46,17 @@ Response format:
 Keep responses concise, practical, and energetic.`;
 
 /**
- * Generate a chat response from Granite
+ * Generate a chat response from Llama 3.3 70B Instruct via Watsonx.ai
  * @param {Array} conversationHistory - [{role, content}, ...]
  * @param {Object} userProfile - current user's profile data
  * @returns {Promise<string>}
  */
 async function generateResponse(conversationHistory, userProfile = {}) {
-  const modelId = process.env.GRANITE_MODEL_ID || "ibm/granite-13b-chat-v2";
+  // Default to Llama 3.3 70B Instruct
+  const modelId = process.env.GRANITE_MODEL_ID || "meta-llama/llama-3-3-70b-instruct";
   const projectId = process.env.WATSONX_PROJECT_ID;
 
-  // BUG FIX: return fallback immediately instead of throwing — the catch below
-  // would never match "PROJECT_ID" because the error message contains "WATSONX_PROJECT_ID"
+  // Return fallback immediately when credentials are missing
   if (!projectId) {
     return getFallbackResponse(conversationHistory);
   }
@@ -76,27 +77,29 @@ async function generateResponse(conversationHistory, userProfile = {}) {
 - Injuries/limitations: ${userProfile.injuries || "none"}`;
   }
 
-  // Format conversation for Granite
   const fullSystemPrompt = SYSTEM_PROMPT + profileContext;
 
-  // Build the prompt in Granite chat format
+  // Map conversation history to Watsonx chat message format
   const messages = conversationHistory.map((m) => ({
     role: m.role === "assistant" ? "assistant" : "user",
     content: m.content,
   }));
 
   try {
-    // BUG FIX: textChat uses maxTokens not max_new_tokens; temperature/topP are
-    // top-level params not nested under "parameters" for the chat endpoint
+    // Llama 3.3 70B Instruct — optimal parameters for a conversational fitness coach:
+    //   temperature  0.7  — balanced creativity without rambling
+    //   topP         0.9  — nucleus sampling; keeps output focused
+    //   maxTokens    800  — enough for a full workout plan; not wasteful
+    //   repetitionPenalty 1.05 — gentle penalty, Llama needs less than Granite
     const response = await wx.textChat({
       modelId,
       projectId,
       messages,
       system: fullSystemPrompt,
-      maxTokens: 600,
-      temperature: 0.75,
+      maxTokens: 800,
+      temperature: 0.7,
       topP: 0.9,
-      repetitionPenalty: 1.1,
+      repetitionPenalty: 1.05,
     });
 
     const text =
@@ -104,10 +107,10 @@ async function generateResponse(conversationHistory, userProfile = {}) {
       response?.result?.results?.[0]?.generated_text ||
       "";
 
-    if (!text) throw new Error("Empty response from Granite model.");
+    if (!text) throw new Error("Empty response from model.");
     return text.trim();
   } catch (err) {
-    // BUG FIX: broaden the catch to cover more auth/config error messages
+    // Broad auth/config error catch → return fallback instead of crashing
     const msg = err.message || "";
     if (
       msg.includes("PROJECT_ID") ||
@@ -127,17 +130,33 @@ async function generateResponse(conversationHistory, userProfile = {}) {
 }
 
 /**
- * Demo fallback when Watsonx credentials aren't configured
+ * Demo fallback when Watsonx credentials are not configured.
+ * Provides realistic responses so the UI is fully testable without an API key.
  */
 function getFallbackResponse(history) {
   const last = history[history.length - 1]?.content?.toLowerCase() || "";
-  if (last.includes("motivat") || last.includes("tired") || last.includes("lazy")) {
-    return "Hey, that's totally normal — even athletes have off days! The fact that you're here shows you care. Let's do a 10-minute 'feel-good' stretch session or take a 15-minute walk while listening to your favourite music. Movement creates motivation, not the other way around. Small steps, big gains. Ready when you are! 🌟\n\n*(Note: Connect your IBM Watsonx.ai credentials in .env to enable full AI responses.)*";
+
+  if (last.includes("motivat") || last.includes("tired") || last.includes("lazy") || last.includes("demotivat")) {
+    return "Hey, that's totally normal — even elite athletes have off days! The fact that you're here shows you care. Let's do a 10-minute 'feel-good' stretch session or take a 15-minute walk while listening to your favourite music. Movement creates motivation, not the other way around. **Small steps, big gains.** Ready when you are! 🌟\n\n*(Note: Add your IBM Watsonx.ai credentials in .env to enable full Llama 3.3 70B AI responses.)*";
   }
-  if (last.includes("workout") || last.includes("exercise") || last.includes("minute")) {
-    return "Perfect! Let's crush a quick full-body blast. 5 min warm-up (jumping jacks, arm circles), then 3 rounds of: 15 squats, 10 push-ups (knee-modified if needed), 20 lunges, 30-second plank. Cool down with stretches. This hits all major muscle groups and boosts metabolism for hours. You've got this! 💪\n\n*(Note: Connect your IBM Watsonx.ai credentials in .env to enable full AI responses.)*";
+
+  if (last.includes("meal") || last.includes("eat") || last.includes("food") || last.includes("diet") || last.includes("nutrition")) {
+    return "Great question! Here's a simple, balanced day:\n\n- **Breakfast:** Moong dal cheela with mint chutney — high protein, light on the stomach\n- **Lunch:** Dal + 2 rotis + seasonal sabzi + curd — the classic power combo\n- **Dinner:** Palak paneer (light) + 1 multigrain roti + salad\n- **Snack:** Roasted chana or a banana + 10 almonds\n\nHydration tip: Aim for 2L of water daily, and coconut water is excellent post-workout. **You've got this!** 💪\n\n*(Note: Add your IBM Watsonx.ai credentials in .env to enable full Llama 3.3 70B AI responses.)*";
   }
-  return "Hi! I'm Fitness Buddy, your AI fitness coach 🏋️. I'm ready to help you with personalized workouts, nutrition tips, and daily motivation! Tell me about your fitness goals and we'll build a plan together.\n\n*(Note: Connect your IBM Watsonx.ai credentials in .env to enable full AI-powered responses.)*";
+
+  if (last.includes("workout") || last.includes("exercise") || last.includes("minute") || last.includes("train")) {
+    return "Let's crush a quick full-body blast! 💥\n\n**Warm-up (5 min):** Jumping jacks, arm circles, high knees\n\n**Main circuit — 3 rounds:**\n- 15 Squats\n- 10 Push-ups (knee-modified if needed)\n- 20 Reverse lunges (10 each leg)\n- 30-sec Plank hold\n\n**Cool-down (5 min):** Quad stretch, child's pose, deep breathing\n\n**Why this works:** Hits all major muscle groups and keeps your heart rate elevated — boosting metabolism for hours after. Rest 60 sec between rounds.\n\n**You've got this!** Want me to set a reminder for tomorrow? 🔥\n\n*(Note: Add your IBM Watsonx.ai credentials in .env to enable full Llama 3.3 70B AI responses.)*";
+  }
+
+  if (last.includes("weight loss") || last.includes("lose weight") || last.includes("fat")) {
+    return "Weight loss is a marathon, not a sprint — and that's great news because **consistency beats intensity** every time! 🏃\n\nHere's your starting framework:\n1. **Movement:** 3×/week of 30-min mixed cardio + bodyweight (I'll build the exact plan)\n2. **Nutrition:** Small deficit — reduce portions by ~20%, don't skip meals\n3. **Hydration:** 2–2.5L water daily; cut sugary drinks\n4. **Sleep:** 7–8 hours — poor sleep spikes hunger hormones\n\nSmall steps, big gains. Want me to generate your first week's workout plan? 💪\n\n*(Note: Add your IBM Watsonx.ai credentials in .env to enable full Llama 3.3 70B AI responses.)*";
+  }
+
+  if (last.includes("muscle") || last.includes("strength") || last.includes("bulk")) {
+    return "Building muscle is all about **progressive overload** — pushing a little harder each week. Here's the core principle:\n\n- Train each muscle group **2× per week**\n- Aim for **3–4 sets of 8–12 reps** per exercise\n- Eat in a **slight calorie surplus** with high protein (1.6–2g per kg bodyweight)\n- **Rest 48 hours** between working the same muscle group\n\nFor home training, push-up variations, squats, lunges, and resistance bands can take you surprisingly far! Want a full 4-week muscle-gain programme? 💪\n\n*(Note: Add your IBM Watsonx.ai credentials in .env to enable full Llama 3.3 70B AI responses.)*";
+  }
+
+  return "Hi! I'm **Fitness Buddy**, your AI-powered health and fitness coach 🏋️\n\nI'm ready to help you with:\n- **Personalized workouts** for any fitness level\n- **Healthy meal ideas** (Indian cuisine fully supported!)\n- **Daily motivation** when you need a push\n- **Progress tracking** and streak goals\n\nTell me about your fitness goals and we'll build a plan together. What would you like to work on today?\n\n*(Note: Add your IBM Watsonx.ai credentials in .env to enable full Llama 3.3 70B AI responses.)*";
 }
 
 module.exports = { generateResponse };

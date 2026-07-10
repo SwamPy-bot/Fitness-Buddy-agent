@@ -1,6 +1,6 @@
 # 💪 Fitness Buddy — AI Health & Fitness Coach
 
-An AI-powered fitness coaching web app built on **IBM Watsonx.ai Granite**, featuring personalized workout plans, nutrition guidance, family profiles, progress tracking, and motivational support.
+An AI-powered fitness coaching web app built on **Llama 3.3 70B Instruct via IBM Watsonx.ai**, featuring personalized workout plans, nutrition guidance, family profiles, progress tracking, and motivational support.
 
 ---
 
@@ -8,7 +8,7 @@ An AI-powered fitness coaching web app built on **IBM Watsonx.ai Granite**, feat
 
 | Feature | Details |
 |---|---|
-| 🤖 **AI Chat Coach** | Conversational fitness guidance powered by IBM Granite LLM |
+| 🤖 **AI Chat Coach** | Conversational fitness guidance powered by Llama 3.3 70B Instruct |
 | 🏋️ **Workout Generator** | Personalized plans for Beginner → Advanced, 15–60 min, any equipment |
 | 🥗 **Nutrition Guidance** | Indian cuisine support (roti, dal, idli, dosa, rajma...) + macro info |
 | 👨‍👩‍👧 **Family Profiles** | Up to 5 profiles with independent goals and plans |
@@ -34,7 +34,7 @@ Then edit `.env`:
 WATSONX_API_KEY=your_ibm_cloud_api_key
 WATSONX_PROJECT_ID=your_watsonx_project_id
 WATSONX_URL=https://us-south.ml.cloud.ibm.com
-GRANITE_MODEL_ID=ibm/granite-13b-chat-v2
+GRANITE_MODEL_ID=meta-llama/llama-3-3-70b-instruct
 ```
 
 > **Note:** If you skip Watsonx credentials, the app runs with smart built-in fallback responses.
@@ -69,7 +69,7 @@ http://localhost:3000
 fitness-buddy-agent/
 ├── server/
 │   ├── index.js              # Express server entry point
-│   ├── watsonx.js            # IBM Watsonx.ai Granite integration
+│   ├── watsonx.js            # IBM Watsonx.ai integration (Llama 3.3 70B)
 │   ├── db.js                 # JSON file database (lowdb)
 │   ├── routes/
 │   │   ├── chat.js           # POST /api/chat — main conversation
@@ -136,11 +136,11 @@ GET /api/nutrition/suggest?goal=weight_loss&diet=vegetarian&meals=3
 ## 🛠️ Tech Stack
 
 - **Backend:** Node.js, Express.js
-- **AI:** IBM Watsonx.ai (`@ibm-cloud/watsonx-ai`) — Granite 13B Chat
+- **AI:** IBM Watsonx.ai (`@ibm-cloud/watsonx-ai`) — Llama 3.3 70B Instruct
 - **Database:** lowdb (JSON file — zero infrastructure)
 - **Frontend:** Vanilla HTML/CSS/JS (no framework, no build step)
 - **Security:** Helmet.js, express-rate-limit, input validation
 
 ---
 
-*Built with ❤️ on IBM Watsonx.ai Granite*
+*Built with ❤️ on IBM Watsonx.ai — Llama 3.3 70B Instruct*
