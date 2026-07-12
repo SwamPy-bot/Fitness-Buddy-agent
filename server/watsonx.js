@@ -63,7 +63,7 @@ Keep responses concise, practical, and energetic.`;
  */
 async function generateResponse(conversationHistory, userProfile = {}) {
   // Default to Llama 3.3 70B Instruct
-  const modelId = process.env.GRANITE_MODEL_ID || "meta-llama/llama-3-3-70b-instruct";
+  const modelId = process.env.GRANITE_MODEL_ID || "ibm/granite-3-8b-instruct";
   const projectId = process.env.WATSONX_PROJECT_ID;
 
   // Return fallback immediately when credentials are missing

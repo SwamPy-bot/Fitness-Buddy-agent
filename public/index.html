@@ -84,6 +84,40 @@
     .sidebar-footer { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border);
       font-size: 12px; color: var(--muted); text-align: center; line-height: 1.6; }
 
+    /* Active nav button */
+    .quick-btn.active { border-color: var(--accent); background: var(--surface); color: var(--accent); }
+    .quick-btn.active .qicon { filter: none; }
+
+    /* ── Page sections ────────────────────────────────── */
+    /* All sections share the full main area; only one visible at a time */
+    .page-section { display: none; flex: 1; flex-direction: column; min-width: 0;
+      overflow-y: auto; }
+    .page-section.active { display: flex; }
+
+    /* Generic page body (non-chat pages) */
+    .page-body { flex: 1; padding: 28px 24px; overflow-y: auto; }
+    .page-body h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+    .page-body .page-desc { color: var(--muted); font-size: 14px; margin-bottom: 24px;
+      line-height: 1.6; }
+
+    /* Action cards inside pages */
+    .action-card { background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+    .action-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+    .action-card p { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 14px; }
+    .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .action-pill { padding: 10px 14px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 13px; cursor: pointer;
+      text-align: center; transition: all 0.15s; color: var(--text); }
+    .action-pill:hover { border-color: var(--accent); color: var(--accent); }
+    .chat-cta { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px;
+      background: var(--accent); border: none; border-radius: var(--radius-sm);
+      color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+    .chat-cta:hover { opacity: 0.85; }
+
+    /* Profile page form inside page-section */
+    .profile-page-form { max-width: 520px; }
+
     /* ── Main chat area ───────────────────────────────── */
     .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
@@ -234,7 +268,7 @@
       <div class="logo-icon">💪</div>
       <div>
         <h1>Fitness Buddy</h1>
-        <span>Powered by Llama 3.3 70B</span>
+        <span>Powered by Granite 3 8B</span>
       </div>
     </div>
 
@@ -249,27 +283,27 @@
       <div class="profile-list" id="profileList">
         <!-- Populated by JS -->
       </div>
-      <button class="add-profile-btn" onclick="openProfileModal()">
-        ＋ Add Profile (max 5)
-      </button>
+      <button class="add-profile-btn" id="nav-add-profile" onclick="showPage('add-profile')">
+          ＋ Add Profile (max 5)
+        </button>
     </div>
 
     <div class="sidebar-section">
       <h3>Quick Actions</h3>
       <div class="quick-btns">
-        <button class="quick-btn" onclick="quickAction('Generate a workout for me right now!')">
+        <button class="quick-btn" id="nav-workout"    onclick="showPage('workout')">
           <span class="qicon">🏋️</span> Generate Workout
         </button>
-        <button class="quick-btn" onclick="quickAction('Suggest a healthy meal plan for today.')">
+        <button class="quick-btn" id="nav-meal"       onclick="showPage('meal')">
           <span class="qicon">🥗</span> Meal Plan
         </button>
-        <button class="quick-btn" onclick="quickAction('Give me a motivational message to get started!')">
+        <button class="quick-btn" id="nav-motivate"   onclick="showPage('motivate')">
           <span class="qicon">🌟</span> Motivate Me
         </button>
-        <button class="quick-btn" onclick="quickAction('Create a family workout we can all do together.')">
+        <button class="quick-btn" id="nav-family"     onclick="showPage('family')">
           <span class="qicon">👨‍👩‍👧</span> Family Workout
         </button>
-        <button class="quick-btn" onclick="openProgressModal()">
+        <button class="quick-btn" id="nav-progress"   onclick="showPage('progress')">
           <span class="qicon">📊</span> My Progress
         </button>
       </div>
@@ -277,14 +311,14 @@
 
     <div class="sidebar-footer">
       Fitness Buddy v1.0<br/>
-      Llama 3.3 70B · IBM Watsonx.ai<br/>
+      Granite 3 8B · IBM Watsonx.ai<br/>
       <span style="color:#ff6584">⚕️ Not a medical service</span>
     </div>
   </aside>
 
   <!-- ── Main ───────────────────────────────────────── -->
   <main class="main">
-    <!-- Top bar -->
+    <!-- Shared top bar — title updates via showPage() -->
     <div class="topbar">
       <button class="hamburger" onclick="toggleSidebar()">☰</button>
       <div class="topbar-title" id="topbarTitle">💪 Fitness Buddy Chat</div>
@@ -297,39 +331,206 @@
       </div>
     </div>
 
-    <!-- Messages -->
-    <div class="messages" id="messages">
-      <!-- Welcome card shown initially -->
-      <div id="welcomeCard" class="welcome-card">
-        <h2>Hey there! 👋 I'm Fitness Buddy</h2>
-        <p>Your personal AI-powered health and fitness coach built on <strong>Llama 3.3 70B via IBM Watsonx.ai</strong>. I can build personalized workout plans, suggest healthy meals, track your progress, and keep you motivated every day!</p>
-        <div class="welcome-chips">
-          <div class="welcome-chip" onclick="quickAction('I have 20 minutes and no equipment. Give me a workout!')">⚡ Quick 20-min workout</div>
-          <div class="welcome-chip" onclick="quickAction('I am a beginner. Help me get started with fitness.')">🌱 I\'m a beginner</div>
-          <div class="welcome-chip" onclick="quickAction('Suggest healthy Indian meals for weight loss.')">🥗 Healthy meals</div>
-          <div class="welcome-chip" onclick="quickAction('I feel demotivated. Can you help?')">😔 I\'m unmotivated</div>
-          <div class="welcome-chip" onclick="quickAction('I want to lose weight. Create a plan for me.')">🎯 Weight loss plan</div>
-          <div class="welcome-chip" onclick="quickAction('I want to build muscle. What should I do?')">💪 Build muscle</div>
+    <!-- ── PAGE: Chat (default, starts active) ──────── -->
+    <div id="page-chat" class="page-section active">
+      <div class="messages" id="messages">
+        <div id="welcomeCard" class="welcome-card">
+          <h2>Hey there! 👋 I'm Fitness Buddy</h2>
+          <p>Your personal AI-powered health and fitness coach. I can build personalized workout plans, suggest healthy meals, track your progress, and keep you motivated every day!</p>
+          <div class="welcome-chips">
+            <div class="welcome-chip" onclick="quickAction('I have 20 minutes and no equipment. Give me a workout!')">⚡ Quick 20-min workout</div>
+            <div class="welcome-chip" onclick="quickAction('I am a beginner. Help me get started with fitness.')">🌱 I\'m a beginner</div>
+            <div class="welcome-chip" onclick="quickAction('Suggest healthy Indian meals for weight loss.')">🥗 Healthy meals</div>
+            <div class="welcome-chip" onclick="quickAction('I feel demotivated. Can you help?')">😔 I\'m unmotivated</div>
+            <div class="welcome-chip" onclick="quickAction('I want to lose weight. Create a plan for me.')">🎯 Weight loss plan</div>
+            <div class="welcome-chip" onclick="quickAction('I want to build muscle. What should I do?')">💪 Build muscle</div>
+          </div>
+          <div class="disclaimer-card">
+            ⚕️ I'm a fitness coach, not a doctor. Always consult a physician before starting new exercise programs, especially if you have health conditions, injuries, or are pregnant.
+          </div>
         </div>
-        <div class="disclaimer-card">
-          ⚕️ I'm a fitness coach, not a doctor. Always consult a physician before starting new exercise programs, especially if you have health conditions, injuries, or are pregnant.
+      </div>
+      <div class="input-area">
+        <div class="input-hints" id="inputHints">
+          <span class="hint-chip" onclick="insertHint('How many calories should I eat?')">Calories?</span>
+          <span class="hint-chip" onclick="insertHint('What should I eat before a workout?')">Pre-workout food</span>
+          <span class="hint-chip" onclick="insertHint('I have back pain. What exercises are safe?')">Injury safe exercises</span>
+          <span class="hint-chip" onclick="insertHint('Make a 7-day workout plan for me.')">7-day plan</span>
+        </div>
+        <div class="input-row">
+          <textarea id="messageInput" rows="1" placeholder="Ask me anything about fitness, workouts, nutrition..."></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">➤</button>
         </div>
       </div>
     </div>
 
-    <!-- Input -->
-    <div class="input-area">
-      <div class="input-hints" id="inputHints">
-        <span class="hint-chip" onclick="insertHint('How many calories should I eat?')">Calories?</span>
-        <span class="hint-chip" onclick="insertHint('What should I eat before a workout?')">Pre-workout food</span>
-        <span class="hint-chip" onclick="insertHint('I have back pain. What exercises are safe?')">Injury safe exercises</span>
-        <span class="hint-chip" onclick="insertHint('Make a 7-day workout plan for me.')">7-day plan</span>
-      </div>
-      <div class="input-row">
-        <textarea id="messageInput" rows="1" placeholder="Ask me anything about fitness, workouts, nutrition..."></textarea>
-        <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">➤</button>
+    <!-- ── PAGE: Generate Workout ───────────────────── -->
+    <div id="page-workout" class="page-section">
+      <div class="page-body">
+        <h2>🏋️ Generate Workout</h2>
+        <p class="page-desc">Pick a style below and I'll build a full plan in the chat — warm-up, main circuit, cool-down, and all.</p>
+        <div class="action-grid">
+          <div class="action-pill" onclick="chatAndGo('Give me a 20-minute beginner bodyweight workout.')">⚡ Quick 20 min</div>
+          <div class="action-pill" onclick="chatAndGo('Create a 45-minute intermediate strength workout.')">💪 45 min Strength</div>
+          <div class="action-pill" onclick="chatAndGo('Design a HIIT cardio workout for weight loss.')">🔥 HIIT Cardio</div>
+          <div class="action-pill" onclick="chatAndGo('Build a full-body workout I can do at home with no equipment.')">🏠 Home / No gear</div>
+          <div class="action-pill" onclick="chatAndGo('Create a 7-day workout plan for me.')">📅 7-Day Plan</div>
+          <div class="action-pill" onclick="chatAndGo('Design a workout routine for building muscle.')">🦾 Muscle Gain</div>
+        </div>
+        <div class="action-card">
+          <h3>Tell me exactly what you need</h3>
+          <p>Type your goal, time available, equipment, and any injuries — I'll build a tailored routine.</p>
+          <button class="chat-cta" onclick="chatAndGo('Generate a workout for me right now!')">💬 Ask in Chat →</button>
+        </div>
       </div>
     </div>
+
+    <!-- ── PAGE: Meal Plan ───────────────────────────── -->
+    <div id="page-meal" class="page-section">
+      <div class="page-body">
+        <h2>🥗 Meal Plan</h2>
+        <p class="page-desc">Simple, nutritious meal ideas tailored to your goal — Indian cuisine fully supported.</p>
+        <div class="action-grid">
+          <div class="action-pill" onclick="chatAndGo('Suggest healthy Indian meals for weight loss today.')">⚖️ Weight Loss</div>
+          <div class="action-pill" onclick="chatAndGo('Give me high-protein meals for muscle gain.')">💪 Muscle Gain</div>
+          <div class="action-pill" onclick="chatAndGo('Suggest vegetarian meal ideas for a healthy day.')">🌱 Vegetarian</div>
+          <div class="action-pill" onclick="chatAndGo('Give me a vegan meal plan for today.')">🥦 Vegan</div>
+          <div class="action-pill" onclick="chatAndGo('What should I eat before and after a workout?')">⚡ Pre/Post Workout</div>
+          <div class="action-pill" onclick="chatAndGo('Suggest a 7-day meal plan for general health.')">📅 7-Day Meal Plan</div>
+        </div>
+        <div class="action-card">
+          <h3>Specific cravings or restrictions?</h3>
+          <p>Tell me your dietary preferences, allergies, or what's in your fridge — I'll suggest something practical.</p>
+          <button class="chat-cta" onclick="chatAndGo('Suggest a healthy meal plan for today.')">💬 Ask in Chat →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: Motivate Me ─────────────────────────── -->
+    <div id="page-motivate" class="page-section">
+      <div class="page-body">
+        <h2>🌟 Motivate Me</h2>
+        <p class="page-desc">On a tough day or just need a push? I've got you. Small steps, big gains.</p>
+        <div class="action-grid">
+          <div class="action-pill" onclick="chatAndGo('I feel demotivated today. Help me get started.')">😔 I\'m unmotivated</div>
+          <div class="action-pill" onclick="chatAndGo('Give me a powerful fitness quote and explain why it matters.')">💬 Daily Quote</div>
+          <div class="action-pill" onclick="chatAndGo('I missed my workout this week. How do I get back on track?')">🔄 Get Back on Track</div>
+          <div class="action-pill" onclick="chatAndGo('Give me a habit-building strategy to stay consistent.')">📆 Build Habits</div>
+          <div class="action-pill" onclick="chatAndGo('I\'m feeling tired and low energy. What can I do?')">😴 Low Energy</div>
+          <div class="action-pill" onclick="chatAndGo('Celebrate my progress and motivate me to keep going!')">🎉 Celebrate Progress</div>
+        </div>
+        <div class="action-card">
+          <h3>What's holding you back?</h3>
+          <p>Tell me how you're feeling right now — I'll give you an honest, empathetic nudge forward.</p>
+          <button class="chat-cta" onclick="chatAndGo('Give me a motivational message to get started!')">💬 Talk to me →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: Family Workout ──────────────────────── -->
+    <div id="page-family" class="page-section">
+      <div class="page-body">
+        <h2>👨‍👩‍👧 Family Workout</h2>
+        <p class="page-desc">Fun, safe workouts the whole family can do together — from kids to grandparents.</p>
+        <div class="action-grid">
+          <div class="action-pill" onclick="chatAndGo('Create a fun family workout for adults and kids.')">👶 With Kids</div>
+          <div class="action-pill" onclick="chatAndGo('Design a family-friendly workout for mixed fitness levels.')">🏃 Mixed Levels</div>
+          <div class="action-pill" onclick="chatAndGo('Give me a family outdoor activity workout plan.')">🌳 Outdoor Fun</div>
+          <div class="action-pill" onclick="chatAndGo('Create a gentle workout suitable for seniors in the family.')">👴 Senior Friendly</div>
+          <div class="action-pill" onclick="chatAndGo('Design a weekend family fitness challenge we can all do.')">🏆 Weekend Challenge</div>
+          <div class="action-pill" onclick="chatAndGo('What are fun fitness games the whole family can play?')">🎮 Fitness Games</div>
+        </div>
+        <div class="action-card">
+          <h3>Tell me about your family</h3>
+          <p>Ages, fitness levels, any limitations — I'll design something everyone can enjoy safely.</p>
+          <button class="chat-cta" onclick="chatAndGo('Create a family workout we can all do together.')">💬 Ask in Chat →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: My Progress ─────────────────────────── -->
+    <div id="page-progress" class="page-section">
+      <div class="page-body">
+        <h2>📊 My Progress</h2>
+        <p class="page-desc">Track your streaks, log workouts, and see how far you've come.</p>
+        <div id="progressPageContent">
+          <p style="color:var(--muted);font-size:14px">Select a profile from the sidebar to view your stats.</p>
+        </div>
+        <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="chat-cta" onclick="logWorkoutFromPage()">✅ Log Today's Workout</button>
+          <button class="chat-cta" style="background:var(--surface2);color:var(--text);border:1px solid var(--border)"
+            onclick="chatAndGo('How am I doing with my fitness goals? Give me encouragement.')">💬 Get Encouragement</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: Add Profile ─────────────────────────── -->
+    <div id="page-add-profile" class="page-section">
+      <div class="page-body">
+        <h2>👤 Add Profile</h2>
+        <p class="page-desc">Create a personalised profile so I can tailor every workout and meal to you.</p>
+        <div class="profile-page-form">
+          <div class="form-row">
+            <div class="form-group"><label>Name *</label><input type="text" id="ppName" placeholder="Your name" /></div>
+            <div class="form-group"><label>Age</label><input type="number" id="ppAge" placeholder="25" min="5" max="120" /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Gender</label>
+              <select id="ppGender">
+                <option value="">Prefer not to say</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Fitness Level</label>
+              <select id="ppLevel">
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Primary Goal</label>
+              <select id="ppGoal">
+                <option value="general_health">General Health</option>
+                <option value="weight_loss">Weight Loss</option>
+                <option value="muscle_gain">Muscle Gain</option>
+                <option value="endurance">Endurance</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Time/Day (minutes)</label>
+              <input type="number" id="ppTime" placeholder="30" min="5" max="120" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Equipment</label>
+              <select id="ppEquipment">
+                <option value="none">None (bodyweight)</option>
+                <option value="minimal">Minimal (bands, dumbbells)</option>
+                <option value="full">Full gym</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Dietary Preference</label>
+              <select id="ppDiet">
+                <option value="non-vegetarian">Non-Vegetarian</option>
+                <option value="vegetarian">Vegetarian</option>
+                <option value="vegan">Vegan</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Injuries / Limitations</label>
+            <input type="text" id="ppInjuries" placeholder="e.g. bad knees, lower back pain (leave blank if none)" />
+          </div>
+          <div style="margin-top:8px">
+            <button class="chat-cta" onclick="saveProfileFromPage()">Create Profile 💪</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -439,6 +640,52 @@
     if (!sessionId) sessionId = generateId();
     localStorage.setItem('fb_session', sessionId);
     updateStatsBar();
+    // Ensure chat page is active on first load
+    showPage('chat');
+  }
+
+  // ── Page navigation ───────────────────────────────
+  const PAGE_TITLES = {
+    'chat':        '💪 Fitness Buddy Chat',
+    'workout':     '🏋️ Generate Workout',
+    'meal':        '🥗 Meal Plan',
+    'motivate':    '🌟 Motivate Me',
+    'family':      '👨‍👩‍👧 Family Workout',
+    'progress':    '📊 My Progress',
+    'add-profile': '👤 Add Profile',
+  };
+
+  function showPage(pageId) {
+    // Hide all sections and remove active state from nav buttons
+    document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.quick-btn[id^="nav-"]').forEach(el => el.classList.remove('active'));
+
+    // Show the requested section
+    const target = document.getElementById('page-' + pageId);
+    if (target) target.classList.add('active');
+
+    // Highlight the matching nav button
+    const btn = document.getElementById('nav-' + pageId);
+    if (btn) btn.classList.add('active');
+
+    // Update topbar title
+    document.getElementById('topbarTitle').textContent =
+      PAGE_TITLES[pageId] || '💪 Fitness Buddy Chat';
+
+    // When switching to progress page, refresh inline stats
+    if (pageId === 'progress') refreshProgressPage();
+
+    // On mobile, collapse sidebar after navigation
+    if (window.innerWidth <= 768) {
+      document.getElementById('sidebar').classList.add('collapsed');
+    }
+  }
+
+  // Navigate to chat, send a message, then stay on chat
+  function chatAndGo(msg) {
+    showPage('chat');
+    document.getElementById('messageInput').value = '';
+    sendMessage(msg);
   }
 
   function generateId() {
@@ -635,6 +882,7 @@
   }
 
   function newChat() {
+    showPage('chat');
     sessionId = generateId();
     localStorage.setItem('fb_session', sessionId);
     const messages = document.getElementById('messages');
@@ -779,6 +1027,99 @@
       if (e.target === overlay) overlay.classList.remove('open');
     });
   });
+
+  // ── Save profile from the inline Add Profile page ────
+  async function saveProfileFromPage() {
+    const name = document.getElementById('ppName').value.trim();
+    if (!name) { alert('Please enter a name!'); return; }
+    const payload = {
+      name,
+      age: document.getElementById('ppAge').value || null,
+      gender: document.getElementById('ppGender').value || null,
+      fitnessLevel: document.getElementById('ppLevel').value,
+      goal: document.getElementById('ppGoal').value,
+      availableTime: document.getElementById('ppTime').value || 30,
+      equipment: document.getElementById('ppEquipment').value,
+      dietaryPreference: document.getElementById('ppDiet').value,
+      injuries: document.getElementById('ppInjuries').value || null,
+    };
+    try {
+      const res = await fetch('/api/profiles', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error((data.errors || [data.error]).join(', '));
+      await loadProfiles();
+      selectProfile(data.profile.id);
+      // Reset form fields
+      ['ppName','ppAge','ppInjuries'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('ppGender').value = '';
+      document.getElementById('ppLevel').value = 'beginner';
+      document.getElementById('ppGoal').value = 'general_health';
+      document.getElementById('ppTime').value = '';
+      document.getElementById('ppEquipment').value = 'none';
+      document.getElementById('ppDiet').value = 'non-vegetarian';
+      // Switch to chat and greet the new user
+      chatAndGo(`Hi! I just set up my profile. My name is ${data.profile.name}, I'm a ${data.profile.fitnessLevel} aiming for ${data.profile.goal.replace(/_/g,' ')}. What should I do first?`);
+    } catch(e) { alert('Error: ' + e.message); }
+  }
+
+  // ── Log workout from the progress page ───────────────
+  async function logWorkoutFromPage() {
+    if (!activeProfileId) { alert('Select a profile from the sidebar first!'); return; }
+    try {
+      await fetch(`/api/profiles/${activeProfileId}/log-workout`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workoutType: 'general', durationMinutes: 30 }),
+      });
+      await loadProfiles();
+      await updateStatsBar();
+      refreshProgressPage();
+    } catch(e) { alert('Could not log workout.'); }
+  }
+
+  // ── Refresh inline progress stats on the progress page
+  async function refreshProgressPage() {
+    const container = document.getElementById('progressPageContent');
+    if (!container) return;
+    if (!activeProfileId) {
+      container.innerHTML = '<p style="color:var(--muted);font-size:14px">Select a profile from the sidebar to view your stats.</p>';
+      return;
+    }
+    try {
+      const res = await fetch(`/api/profiles/${activeProfileId}/progress`);
+      const data = await res.json();
+      const p = data.profile;
+      const logs = (data.logs || []).slice(-5).reverse();
+      container.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+          <div class="action-card" style="text-align:center;padding:16px">
+            <div style="font-size:28px;font-weight:700;color:var(--accent)">${p.totalWorkouts || 0}</div>
+            <div style="font-size:12px;color:var(--muted)">Total Workouts</div>
+          </div>
+          <div class="action-card" style="text-align:center;padding:16px">
+            <div style="font-size:28px;font-weight:700;color:var(--accent2)">${p.currentStreak || 0}</div>
+            <div style="font-size:12px;color:var(--muted)">Current Streak 🔥</div>
+          </div>
+          <div class="action-card" style="text-align:center;padding:16px">
+            <div style="font-size:28px;font-weight:700;color:var(--green)">${p.longestStreak || 0}</div>
+            <div style="font-size:12px;color:var(--muted)">Best Streak 🏆</div>
+          </div>
+        </div>
+        ${logs.length ? `
+          <h3 style="font-size:13px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Recent Sessions</h3>
+          ${logs.map(l => `
+            <div style="display:flex;justify-content:space-between;align-items:center;
+              padding:10px 0;border-bottom:1px solid var(--border);font-size:13px">
+              <span style="font-weight:500">${l.workoutType} ${l.durationMinutes ? '· ' + l.durationMinutes + ' min' : ''}</span>
+              <span style="color:var(--muted)">${new Date(l.date).toLocaleDateString()}</span>
+            </div>`).join('')}
+        ` : '<p style="color:var(--muted);font-size:13px">No workouts logged yet — let\'s change that! 💪</p>'}`;
+    } catch(e) {
+      container.innerHTML = '<p style="color:var(--muted)">Could not load progress data.</p>';
+    }
+  }
 
   init();
 </script>
