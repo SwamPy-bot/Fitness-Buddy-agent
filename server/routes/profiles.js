@@ -7,8 +7,6 @@ const router = express.Router();
 const db = require("../db");
 const { v4: uuidv4 } = require("uuid");
 
-const MAX_PROFILES = 5;
-
 const VALID_FITNESS_LEVELS = ["beginner", "intermediate", "advanced"];
 const VALID_GOALS = ["weight_loss", "muscle_gain", "endurance", "general_health"];
 const VALID_EQUIPMENT = ["none", "minimal", "full"];
@@ -48,9 +46,6 @@ router.get("/:id", (req, res) => {
 // POST create profile
 router.post("/", (req, res) => {
   const profiles = db.get("profiles").value();
-  if (profiles.length >= MAX_PROFILES) {
-    return res.status(400).json({ error: `Maximum of ${MAX_PROFILES} profiles allowed.` });
-  }
 
   const errors = validateProfile(req.body);
   if (errors.length) return res.status(400).json({ errors });

@@ -284,7 +284,7 @@
         <!-- Populated by JS -->
       </div>
       <button class="add-profile-btn" id="nav-add-profile" onclick="showPage('add-profile')">
-          ＋ Add Profile (max 5)
+          ＋ Add Profile 
         </button>
     </div>
 
@@ -706,24 +706,25 @@
   }
 
   function renderProfiles() {
-    const list = document.getElementById('profileList');
-    list.innerHTML = '';
-    profiles.forEach(p => {
-      const initials = p.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
-      const colors = ['#6c63ff','#ff6584','#43e97b','#f9a825','#36d1dc'];
-      const color = colors[profiles.indexOf(p) % colors.length];
-      const item = document.createElement('div');
-      item.className = 'profile-item' + (p.id === activeProfileId ? ' active' : '');
-      item.innerHTML = `
-        <div class="profile-avatar" style="background:${color}">${initials}</div>
-        <div class="profile-info">
-          <div class="profile-name">${p.name}</div>
-          <div class="profile-meta">${p.fitnessLevel} · ${p.goal.replace('_',' ')}</div>
-        </div>`;
-      item.onclick = () => selectProfile(p.id);
-      list.appendChild(item);
-    });
-  }
+  const list = document.getElementById('profileList');
+  list.innerHTML = '';
+  // Only show the currently active profile
+  const p = profiles.find(x => x.id === activeProfileId);
+  if (!p) return; // No active profile, show nothing
+  
+  const initials = p.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+  const color = '#6c63ff'; // Fixed color for single profile
+  const item = document.createElement('div');
+  item.className = 'profile-item active';
+  item.innerHTML = `
+    <div class="profile-avatar" style="background:${color}">${initials}</div>
+    <div class="profile-info">
+      <div class="profile-name">${p.name}</div>
+      <div class="profile-meta">${p.fitnessLevel} · ${p.goal.replace('_',' ')}</div>
+    </div>`;
+  item.onclick = () => selectProfile(p.id);
+  list.appendChild(item);
+}
 
   function selectProfile(id) {
     activeProfileId = id;

@@ -34,7 +34,7 @@ app.use(express.json({ limit: "10kb" }));
 // ── Rate limiting ───────────────────────────────────────────────
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: 1000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, please slow down and rest! 💪" },
